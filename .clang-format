@@ -1,0 +1,13 @@
+IndentWidth: 4
+Language: Cpp
+DerivePointerAlignment: false
+PointerAlignment: Right
+AlignAfterOpenBracket: BlockIndent 
+AllowShortFunctionsOnASingleLine: false
+BreakBeforeBraces: Allman
+AlignOperands: false
+AllowShortLambdasOnASingleLine: true
+BinPackParameters: false
+BreakBeforeBinaryOperators: None
+BreakBeforeConceptDeclarations: Always
+
