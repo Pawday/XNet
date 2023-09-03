@@ -1,14 +1,17 @@
+#include <iostream>
+
 #include <xnet/ip/IPv4.hh>
 
-unsigned char ipv4_packet[] = {
+unsigned char ipv4_packet_data[] = {
+
     // IHL = 5
     // TOS = {Routine, Normal Delay, Normal Throughput, Normal Relibility}
     // Total length = 0x1DF (dec 479)
     0x45, 0x00, 0x01, 0xDF,
 
-    // TODO: Identification =
-    // TODO: Flags =
-    // TODO: Fragment Offset =
+    // Identification = 0xD4ED (dec 54509)
+    // Flags = {Reserved = 0, Dont fragment, Last Fragment
+    // Fragment Offset = 0b0000000000000
     0xD4, 0xED, 0x40, 0x00,
 
     // TTL = 0x39 (dec 57)
@@ -16,8 +19,12 @@ unsigned char ipv4_packet[] = {
     // Header Checksum = 0x36A0 (dec 13984)
     0x39, 0x06, 0x36, 0xA0,
 
+    // SRC 162.159.87.234 (Cloudflare)
     0xA2, 0x9F, 0x87, 0xEA,
-    0x0A, 0x00, 0x00, 0x02, 0x01, 0xBB, 0xE0, 0x8A,
+    // DST 10.0.0.2
+    0x0A, 0x00, 0x00, 0x02,
+
+    0x01, 0xBB, 0xE0, 0x8A,
     0x4A, 0x73, 0x51, 0x55, 0xA4, 0x31, 0x7F, 0xC7,
     0x50, 0x18, 0x00, 0x08, 0x49, 0x35, 0x00, 0x00,
     0x17, 0x03, 0x03, 0x01, 0xB2, 0x15, 0x2F, 0x2E,
@@ -78,11 +85,113 @@ unsigned char ipv4_packet[] = {
 
 int main()
 {
-    const auto validated_ipv4_packet = ip::find_first(ipv4_packet);
+    using namespace ip::v4;
+    const auto validated_ipv4_packet = ip::Packet::parse_at(ipv4_packet_data);
     if (!validated_ipv4_packet.has_value())
     {
+        std::cout << "Invalid Packet" << std::endl;
         return EXIT_FAILURE;
     }
 
-    ip::v4::try_cast_from(*validated_ipv4_packet);
+    const auto packet = ip::v4::Packet::cast_from(*validated_ipv4_packet);
+
+    if (!packet)
+    {
+        std::cout << "Invalid IHL" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    if (5 != packet->get_IHL())
+    {
+        std::cout << "Invalid IHL" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+
+    const auto TOS = packet->get_type_of_service();
+    if (
+              TOS.get_precedence() != tos::Precedence::ROUTINE 
+           || TOS.get_delay() != tos::Delay::NORMAL 
+           || TOS.get_throughput() != tos::Throughput::NORMAL
+           || TOS.get_relibility() != tos::Relibility::NORMAL)
+    {
+        std::cout << "Invalid Type of service" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+
+   if (packet->get_total_length() != sizeof(ipv4_packet_data))
+   {
+        std::cout << "Invalid total length" << std::endl;
+        return EXIT_FAILURE;
+   }
+
+   if (packet->get_identification() != 0xD4ED)
+   {
+        std::cout << "Invalid identification" << std::endl;
+        return EXIT_FAILURE;
+   }
+
+   const auto flags = packet->get_flags();
+   if (!flags)
+   {
+        std::cout << "Invalid flag (reserved field is not zero)" << std::endl;
+        return EXIT_FAILURE;
+   }
+
+   if (flags->may_fragment() || !flags->is_last_fragment())
+   {
+       std::cout << "Invalid flags" << std::endl;
+       return EXIT_FAILURE;
+   }
+
+   if (packet->get_fragment_offset() != 0)
+   {
+       std::cout << "Fragment offset is not 0" << std::endl;
+       return EXIT_FAILURE;
+   }
+
+   if (packet->get_TTL() != 0x39)
+   {
+       std::cout << "Invalid TTL" << std::endl;
+       return EXIT_FAILURE;
+   }
+
+   if (packet->get_protocol_num() != 0x6)
+   {
+       std::cout << "Invalid protocol" << std::endl;
+       return EXIT_FAILURE;
+   }
+
+   if (packet->get_header_checksum() != 0x36A0)
+   {
+       std::cout << "Invalid checksum" << std::endl;
+       return EXIT_FAILURE;
+   }
+
+   if(packet->get_src().host_order() != 0xA29F87EA)
+   {
+       std::cout << "Invalid src" << std::endl;
+       return EXIT_FAILURE;
+   }
+
+   if(packet->get_dst().host_order() != 0x0A000002)
+   {
+       std::cout << "Invalid dst" << std::endl;
+       return EXIT_FAILURE;
+   }
+
+   if (packet->get_options_size() != 0)
+   {
+       std::cout << "Invalid options size" << std::endl;
+       return EXIT_FAILURE;
+   }
+
+   if (packet->get_options_amount() != 0)
+   {
+       std::cout << "Invalid options amount" << std::endl;
+       return EXIT_FAILURE;
+   }
+
+
 }

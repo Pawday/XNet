@@ -48,6 +48,7 @@ function(_cm_compiler_clang_enable_strict_compilation TARGET)
     if(${IS_CLANG_GCC})
         target_compile_options(${TARGET} PRIVATE "-Wall"
             "-Wextra"
+            "-Wall"
             "-Werror"
             "-pedantic")
         return()

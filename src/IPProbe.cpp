@@ -1,7 +1,8 @@
 #include "IPProbe.hh"
 
-#include <cassert>
+
 #include <cstdint>
+#include <utility>
 
 #include <xnet/ip/IPv4.hh>
 #include <xnet/ip/IPv6.hh>
@@ -12,9 +13,9 @@ namespace ip
 
 static bool verify_ipv4_checksum(std::span<const uint8_t> data)
 {
-    assert(data.size() != 0);
     if (data.size() == 0)
     {
+	std::unreachable();
         return false;
     }
 
@@ -23,8 +24,8 @@ static bool verify_ipv4_checksum(std::span<const uint8_t> data)
         return false;
     }
 
-    // if data size is not even (16 bits * N) we cannot  
-    // verify RFC791 Header Checksum 
+    // if data size is not even (16 bits * N) we cannot
+    //    verify RFC791 Header Checksum 
     if ((data.size() & 1) != 0)
     {
         return false;
@@ -107,6 +108,25 @@ bool validate_ipv4_at(std::span<const uint8_t> data) noexcept
     total_length |= data[3];
 
     if (data.size() < total_length)
+    {
+        return false;
+    }
+
+    
+    constexpr uint8_t ipv4_flags_position = 6;
+    // data[ipv4_flags_position]:
+    // 0b000_00000
+    //    ^    ^
+    //    |    |
+    //    |    +--- first part of fragment Offset
+    //    |
+    //    +----- Flags
+
+    /*
+     * RFC 791:
+     * "Bit 0: reserved, must be zero"
+    */
+    if ((data[ipv4_flags_position] & 0b10000000) != 0)
     {
         return false;
     }

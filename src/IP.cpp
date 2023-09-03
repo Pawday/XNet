@@ -1,19 +1,31 @@
-#include <span>
-#include <cassert>
-
 #include <xnet/ip/IP.hh>
+
+#include <utility>
+
 #include "IPProbe.hh"
 
 namespace ip
 {
 
-static std::optional<size_t>
-get_uint4_offset(std::span<const uint8_t> data, uint8_t uint4_value)
+Packet::Packet(std::span<const uint8_t> data) noexcept : data(data)
 {
-    assert(uint4_value < 16);
+}
+
+uint8_t Packet::get_version() const noexcept
+{
+    return (this->data[0] & 0xf0) >> 4;
+}
+
+const std::span<const uint8_t> Packet::get_data() const noexcept
+{
+    return this->data;
+}
+
+static std::optional<size_t> get_uint4_offset(std::span<const uint8_t> data, uint8_t uint4_value)
+{
     if (uint4_value > 15)
     {
-        return {};
+        std::unreachable();
     }
 
     size_t pos = 0;
@@ -30,7 +42,20 @@ get_uint4_offset(std::span<const uint8_t> data, uint8_t uint4_value)
     return {};
 }
 
-std::optional<Packet> find_first(std::span<const uint8_t> data) noexcept
+std::optional<Packet> Packet::parse_at(std::span<const uint8_t> data) noexcept
+{
+    bool is_ipv4_valid = validate_ipv4_at(data);
+    bool is_ipv6_valid = validate_ipv6_at(data);
+
+    if (!(is_ipv4_valid || is_ipv6_valid))
+    {
+        return {};
+    }
+
+    return Packet(data);
+}
+
+std::optional<Packet> Packet::find_first(std::span<const uint8_t> data) noexcept
 {
     const auto ipv4_header_pos = get_uint4_offset(data, 4);
     const auto ipv6_header_pos = get_uint4_offset(data, 6);
@@ -52,8 +77,7 @@ std::optional<Packet> find_first(std::span<const uint8_t> data) noexcept
         {
             if (is_ipv4_valid)
             {
-                // TODO: invoke ipv4 wrapper
-                return {};
+                return Packet(data.subspan(*ipv4_header_pos));
             }
 
             if (is_ipv6_valid)
@@ -73,16 +97,17 @@ std::optional<Packet> find_first(std::span<const uint8_t> data) noexcept
 
         if (is_ipv4_valid)
         {
-            // TODO: invoke ipv4 wrapper
+            return Packet(data.subspan(*ipv4_header_pos));
             return {};
         }
 
         return {};
     }
 
-    if (ipv4_header_pos.has_value() && validate_ipv4_at(data.subspan(*ipv4_header_pos)))
+    if (ipv4_header_pos.has_value() &&
+        validate_ipv4_at(data.subspan(*ipv4_header_pos)))
     {
-        // TODO: invoke ipv4 wrapper
+        return Packet(data.subspan(*ipv4_header_pos));
         return {};
     }
 

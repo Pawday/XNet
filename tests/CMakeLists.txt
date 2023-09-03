@@ -6,6 +6,6 @@ endif ()
 
 enable_testing()
 
-add_executable(IPHeaderSearchTester IPHeaderSearchTest.cpp)
-target_link_libraries(IPHeaderSearchTester PRIVATE XNet)
-add_test(IPHeaderSearchTest IPHeaderSearchTester)
+add_executable(IPv4HeaderParseTester IPv4HeaderParseTester.cpp)
+target_link_libraries(IPv4HeaderParseTester PRIVATE XNet)
+add_test(ParseIPv4Header IPv4HeaderParseTester)
